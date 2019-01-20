@@ -32,6 +32,7 @@ namespace AspNetCoreTodo.Services
             newItem.Id = Guid.NewGuid();
             newItem.UserId = user.Id;
             newItem.IsDone = false;
+            // TODO: use datepicker for due date
             newItem.DueAt = DateTimeOffset.Now.AddDays(3);
 
             _dbContext.Items.Add(newItem);
