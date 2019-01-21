@@ -36,9 +36,39 @@ namespace AspNetCoreTodo
                 options.MinimumSameSitePolicy = SameSiteMode.None;
             });
 
-            services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseSqlite(
-                    Configuration.GetConnectionString("DefaultConnection")));
+            // Depending on if in development or production, use either Heroku-provided
+            // connection string, or development connection string from Env.
+            var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+            if (env == "Development")
+            {
+                // Use provided SQLite connection string.
+                services.AddDbContext<ApplicationDbContext>(options =>
+                    options.UseSqlite(
+                        Configuration.GetConnectionString("DefaultConnection")));
+            }
+            else
+            {
+                // Use connection string provided at runtime by Heroku.
+                services.AddEntityFrameworkNpgsql().AddDbContext<ApplicationDbContext>(options =>
+                {
+                    var conUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+
+                    // Parse connection URL to connection string for Npgsql
+                    conUrl = conUrl.Replace("postgres://", string.Empty);
+                    var pgUserPass = conUrl.Split("@")[0];
+                    var pgHostPortDb = conUrl.Split("@")[1];
+                    var pgHostPort = pgHostPortDb.Split("/")[0];
+                    var pgDb = pgHostPortDb.Split("/")[1];
+                    var pgUser = pgUserPass.Split(":")[0];
+                    var pgPass = pgUserPass.Split(":")[1];
+                    var pgHost = pgHostPort.Split(":")[0];
+                    var pgPort = pgHostPort.Split(":")[1];
+
+                    string conStr = $"Server={pgHost};Port={pgPort};User Id={pgUser};Password={pgPass};Database={pgDb}";
+                    options.UseNpgsql(conStr);
+                });
+            }
+
             services.AddIdentity<IdentityUser, IdentityRole>()
                 .AddDefaultUI(UIFramework.Bootstrap4)
                 .AddEntityFrameworkStores<ApplicationDbContext>();
